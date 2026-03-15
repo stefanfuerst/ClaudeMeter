@@ -11,21 +11,27 @@ import SwiftUI
 struct DualBarIcon: View {
     let percentage: Double        // Session percentage
     let weeklyPercentage: Double  // Weekly percentage
-    let status: UsageStatus
+    let status: UsageStatus       // Session pacing status
+    let weeklyStatus: UsageStatus // Weekly pacing status
     let isLoading: Bool
     let isStale: Bool
 
-    private let barWidth: CGFloat = 32
-    private let barHeight: CGFloat = 5
-    private let barSpacing: CGFloat = 2
+    private let barWidth: CGFloat = 16
+    private let barHeight: CGFloat = 4
+    private let barSpacing: CGFloat = 1
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             if isLoading {
                 Image(systemName: "arrow.clockwise")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(statusColor)
             } else {
+                // Show session percentage (left)
+                Text("\(Int(percentage))%")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(statusColor)
+
                 // Two stacked progress bars
                 VStack(spacing: barSpacing) {
                     // Session bar (top) - blue/cyan
@@ -45,10 +51,10 @@ struct DualBarIcon: View {
                     .frame(width: barWidth, height: barHeight)
                 }
 
-                // Show session percentage (primary metric)
-                Text("\(Int(percentage))%")
-                    .font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundColor(statusColor)
+                // Show weekly percentage (right)
+                Text("\(Int(weeklyPercentage))%")
+                    .font(.system(size: 9, weight: .medium, design: .monospaced))
+                    .foregroundColor(isStale ? .gray : weeklyStatus.color)
             }
 
             if isStale && !isLoading {
@@ -69,14 +75,12 @@ struct DualBarIcon: View {
 
     private var sessionBarColor: Color {
         if isStale { return .gray }
-        // Use status color for session bar
         return status.color
     }
 
     private var weeklyBarColor: Color {
         if isStale { return .gray }
-        // Purple/violet for weekly to distinguish from session
-        return .purple
+        return weeklyStatus.color
     }
 }
 
@@ -105,13 +109,13 @@ private struct ProgressBar: View {
 #Preview {
     VStack(spacing: 20) {
         HStack(spacing: 20) {
-            DualBarIcon(percentage: 35, weeklyPercentage: 20, status: .safe, isLoading: false, isStale: false)
-            DualBarIcon(percentage: 65, weeklyPercentage: 45, status: .warning, isLoading: false, isStale: false)
-            DualBarIcon(percentage: 92, weeklyPercentage: 78, status: .critical, isLoading: false, isStale: false)
+            DualBarIcon(percentage: 35, weeklyPercentage: 20, status: .safe, weeklyStatus: .safe, isLoading: false, isStale: false)
+            DualBarIcon(percentage: 65, weeklyPercentage: 45, status: .warning, weeklyStatus: .safe, isLoading: false, isStale: false)
+            DualBarIcon(percentage: 92, weeklyPercentage: 78, status: .critical, weeklyStatus: .warning, isLoading: false, isStale: false)
         }
         HStack(spacing: 20) {
-            DualBarIcon(percentage: 45, weeklyPercentage: 30, status: .safe, isLoading: true, isStale: false)
-            DualBarIcon(percentage: 45, weeklyPercentage: 30, status: .safe, isLoading: false, isStale: true)
+            DualBarIcon(percentage: 45, weeklyPercentage: 30, status: .safe, weeklyStatus: .safe, isLoading: true, isStale: false)
+            DualBarIcon(percentage: 45, weeklyPercentage: 30, status: .safe, weeklyStatus: .safe, isLoading: false, isStale: true)
         }
     }
     .padding()

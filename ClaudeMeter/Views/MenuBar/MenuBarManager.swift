@@ -18,6 +18,7 @@ final class MenuBarManager {
     private let iconCache = IconCache()
     private let iconRenderer = MenuBarIconRenderer()
     private var openUsageObserver: NSObjectProtocol?
+    private var iconUpdateTimer: Timer?
 
     init(appModel: AppModel) {
         self.appModel = appModel
@@ -28,6 +29,7 @@ final class MenuBarManager {
         createPopover()
         observeIconUpdates()
         observeOpenPopoverRequests()
+        startIconUpdateTimer()
 
         Task {
             await appModel.bootstrap()
@@ -42,6 +44,7 @@ final class MenuBarManager {
         createPopover()
         observeIconUpdates()
         observeOpenPopoverRequests()
+        startIconUpdateTimer()
     }
     #endif
 
@@ -49,6 +52,7 @@ final class MenuBarManager {
         if let openUsageObserver {
             NotificationCenter.default.removeObserver(openUsageObserver)
         }
+        iconUpdateTimer?.invalidate()
     }
 
     // MARK: - Setup
@@ -108,12 +112,25 @@ final class MenuBarManager {
         }
     }
 
+    private func startIconUpdateTimer() {
+        // Update icon every minute to reflect pacing status changes as time passes
+        iconUpdateTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.updateIcon()
+            }
+        }
+    }
+
     private func updateIcon() {
         guard let button = statusItem?.button else { return }
 
         let percentage = clamped(appModel.usageData?.sessionUsage.percentage ?? 0)
         let weeklyPercentage = clamped(appModel.usageData?.weeklyUsage.percentage ?? 0)
-        let status = appModel.usageData?.primaryStatus ?? .safe
+
+        // Calculate pacing-based statuses
+        let status = appModel.usageData?.sessionUsage.pacingStatus(windowDuration: Constants.Pacing.sessionWindow) ?? .safe
+        let weeklyStatus = appModel.usageData?.weeklyUsage.pacingStatus(windowDuration: Constants.Pacing.weeklyWindow) ?? .safe
+
         let isStale = appModel.usageData?.isStale ?? false
         let isLoading = appModel.isLoading
         let style = appModel.settings.iconStyle
@@ -124,7 +141,8 @@ final class MenuBarManager {
             isLoading: isLoading,
             isStale: isStale,
             iconStyle: style,
-            weeklyPercentage: weeklyPercentage
+            weeklyPercentage: weeklyPercentage,
+            weeklyStatus: weeklyStatus
         ) {
             button.image = cachedImage
             return
@@ -136,7 +154,8 @@ final class MenuBarManager {
             isLoading: isLoading,
             isStale: isStale,
             iconStyle: style,
-            weeklyPercentage: weeklyPercentage
+            weeklyPercentage: weeklyPercentage,
+            weeklyStatus: weeklyStatus
         )
 
         iconCache.set(
@@ -146,7 +165,8 @@ final class MenuBarManager {
             isLoading: isLoading,
             isStale: isStale,
             iconStyle: style,
-            weeklyPercentage: weeklyPercentage
+            weeklyPercentage: weeklyPercentage,
+            weeklyStatus: weeklyStatus
         )
 
         button.image = image

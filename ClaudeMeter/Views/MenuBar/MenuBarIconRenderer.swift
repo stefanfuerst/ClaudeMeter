@@ -17,7 +17,8 @@ struct MenuBarIconRenderer {
         isLoading: Bool,
         isStale: Bool,
         iconStyle: IconStyle,
-        weeklyPercentage: Double = 0
+        weeklyPercentage: Double = 0,
+        weeklyStatus: UsageStatus = .safe
     ) -> NSImage {
         let iconView = MenuBarIconView(
             percentage: percentage,
@@ -25,7 +26,8 @@ struct MenuBarIconRenderer {
             isLoading: isLoading,
             isStale: isStale,
             iconStyle: iconStyle,
-            weeklyPercentage: weeklyPercentage
+            weeklyPercentage: weeklyPercentage,
+            weeklyStatus: weeklyStatus
         )
 
         let renderer = ImageRenderer(content: iconView)
