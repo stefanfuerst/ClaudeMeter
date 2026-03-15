@@ -66,6 +66,42 @@ extension UsageLimit {
         resetAt < Date() && utilization > 0
     }
 
+    /// Returns percentage of time window that has elapsed (0-100)
+    /// - Parameter windowDuration: Duration of the usage window (e.g., 5 hours for session)
+    func timeElapsedPercentage(windowDuration: TimeInterval) -> Double {
+        let now = Date()
+        guard resetAt > now else { return 100 }
+
+        let windowStart = resetAt.addingTimeInterval(-windowDuration)
+        let elapsed = now.timeIntervalSince(windowStart)
+        guard elapsed > 0 else { return 0 }
+
+        let percentage = (elapsed / windowDuration) * 100
+        return min(max(percentage, 0), 100)
+    }
+
+    /// Returns status based on pacing (usage vs time elapsed) rather than absolute usage
+    /// - Parameter windowDuration: Duration of the usage window (e.g., 5 hours for session)
+    func pacingStatus(windowDuration: TimeInterval) -> UsageStatus {
+        let timeElapsed = timeElapsedPercentage(windowDuration: windowDuration)
+
+        // If not enough time has passed, use absolute status
+        guard timeElapsed > 5 else { return status }
+
+        // Calculate pacing ratio: how much you're using relative to time passing
+        let ratio = utilization / timeElapsed
+
+        // Apply thresholds based on ratio
+        switch ratio {
+        case 0..<1.0:
+            return .safe  // Using less than time elapsed
+        case 1.0..<Constants.Pacing.riskThreshold:
+            return .warning  // Over-pacing but not critical
+        default:
+            return .critical  // Significantly over-pacing
+        }
+    }
+
     /// Returns true if current usage rate will likely exceed limit before reset
     /// - Parameter windowDuration: Duration of the usage window (e.g., 5 hours for session)
     func isAtRisk(windowDuration: TimeInterval) -> Bool {
